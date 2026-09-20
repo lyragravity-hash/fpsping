@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "fpsping",
+	"version": "${version}",
+	"name": "FPS & Ping Monitor",
+	"description": "Customizable FPS and ping overlay: draggable box, themes, custom colors, sparkline graphs, server TPS, RAM/entity stats, and lag alerts. Press O to configure.",
+	"authors": [
+		"mfdq"
+	],
+	"license": "MIT",
+	"environment": "client",
+	"icon": "assets/fpsping/icon.png",
+	"mixins": [
+		"fpsping.mixins.json"
+	],
+	"entrypoints": {
+		"client": [
+			"com.example.fpsping.FpsPingModClient"
+		],
+		"modmenu": [
+			"com.example.fpsping.compat.ModMenuImpl"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"recommends": {
+		"modmenu": "*"
+	}
+}

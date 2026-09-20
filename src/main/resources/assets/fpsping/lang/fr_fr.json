@@ -1,0 +1,5 @@
+{
+	"key.fpsping.settings": "Ouvrir les réglages de FPS & Ping Monitor",
+	"fpsping.alert.ping": "Ping élevé : %s ms !",
+	"fpsping.alert.fps": "FPS faibles : %s !"
+}
