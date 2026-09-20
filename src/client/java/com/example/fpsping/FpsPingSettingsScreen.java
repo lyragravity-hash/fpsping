@@ -280,11 +280,11 @@ public final class FpsPingSettingsScreen extends Screen {
 		// Highlight the active tab with an underline.
 		int ux = tabX(this.tab);
 		graphics.fill(ux, 26 + BTN_H, ux + TAB_W, 26 + BTN_H + 2, 0xFF55FF55);
+		graphics.drawCenteredString(this.font, "Drag the box to move it", this.width / 2,
+				26 + BTN_H + 8, 0xFFAAAAAA);
 		if (this.note != null) {
 			graphics.drawCenteredString(this.font, this.note, this.width / 2, this.noteY + 5, 0xFFAAAAAA);
 		}
-		graphics.drawCenteredString(this.font, "Drag the box to move it", this.width / 2,
-				this.height - BTN_H * 2 - 14, 0xFFAAAAAA);
 		// Live preview of the overlay with the current settings.
 		HudOverlay.render(graphics, Minecraft.getInstance(), true);
 	}

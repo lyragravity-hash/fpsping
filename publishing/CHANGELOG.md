@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+
+Small fix: the "Drag the box to move it" hint used to sit on top of the bottom buttons on short windows. It lives under the tab row now.
+
 ## 1.1.1
 
 The settings screen was getting crowded. Everything lived in one big two-column block, and once custom colors showed up it would run right past the bottom of the screen at higher GUI scales. It's split into tabs now (Display / Stats / Alerts / Colors / Profile) — same options, just sorted properly.
