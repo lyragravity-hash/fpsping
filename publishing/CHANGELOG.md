@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.1 — Polish release
+
+- **Settings screen redesigned with tabs** (Display / Stats / Alerts / Colors / Profile) — no more widgets running off-screen at high GUI scales
+- **Reset to defaults** button (with a click-twice confirmation)
+- **Alert sound** is now toggleable in the UI (it was config-only before)
+- **FPS graph autoscales** — no longer floored at 60 FPS, so 30–60 FPS machines get a real waveform instead of a flat line
+- Internal: toggle buttons no longer decode their state from label text; alerts skip work entirely when both thresholds are off
+
 ## 1.1.0 — Feature release
 
 - **Draggable overlay**: drag the box anywhere in the settings-screen preview; snaps to edges/corners

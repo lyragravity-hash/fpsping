@@ -13,19 +13,24 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
 /**
- * Settings screen v2: live draggable preview (drag the box anywhere, it snaps
- * to edges/corners), sliders for scale and background opacity, toggle buttons
- * for every line/graph, a text style cycler, custom color pickers (hex), alert
- * thresholds, and per-server profile management. Everything saves instantly.
+ * Settings screen v3: tabbed (Display / Stats / Alerts / Colors / Profile) so
+ * everything fits even at high GUI scales, with a live draggable preview of
+ * the overlay. Includes an alert-sound toggle and a two-click "Reset to
+ * defaults". Everything saves instantly.
  */
 public final class FpsPingSettingsScreen extends Screen {
 	private static final int COL_W = 155;
 	private static final int BTN_H = 20;
 	private static final int GAP = 4;
+	private static final int TAB_W = 60;
+	private static final String[] TABS = { "Display", "Stats", "Alerts", "Colors", "Profile" };
 
 	private final Screen parent;
 	/** Set while dragging the preview box with the mouse. */
 	private boolean dragging;
+	private int tab;
+	/** Arms the two-click confirm on "Reset to defaults". */
+	private boolean resetArmed;
 
 	public FpsPingSettingsScreen(Screen parent) {
 		super(Component.literal("FPS & Ping Monitor"));
@@ -36,116 +41,159 @@ public final class FpsPingSettingsScreen extends Screen {
 		return FpsPingConfig.active();
 	}
 
+	private int tabX(int i) {
+		return this.width / 2 - (TABS.length * (TAB_W + GAP) - GAP) / 2 + i * (TAB_W + GAP);
+	}
+
 	@Override
 	protected void init() {
+		// ---- Tab row ----
+		for (int i = 0; i < TABS.length; i++) {
+			final int index = i;
+			addRenderableWidget(Button.builder(Component.literal(TABS[i]), b -> {
+				if (this.tab != index) {
+					this.tab = index;
+					this.resetArmed = false;
+					this.rebuildWidgets();
+				}
+			}).bounds(tabX(i), 26, TAB_W, BTN_H).build());
+		}
+
 		int left = this.width / 2 - COL_W - GAP / 2;
 		int right = this.width / 2 + GAP / 2;
-		int top = Math.max(30, this.height / 2 - 100);
+		int top = 26 + BTN_H + GAP * 3;
 		int y = top;
 
-		// ---- Left column ----
-		addRenderableWidget(toggle(left, y, "Enabled", config().enabled, v -> config().enabled = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(Button.builder(themeLabel(), b -> {
-			config().theme = config().theme.next();
-			config().save();
-			b.setMessage(themeLabel());
-		}).bounds(left, y, COL_W, BTN_H).build());
-		y += BTN_H + GAP;
-		addRenderableWidget(new ScaleSlider(left, y, COL_W, BTN_H));
-		y += BTN_H + GAP;
-		addRenderableWidget(Button.builder(styleLabel(), b -> {
-			config().textStyle = (config().textStyle + 1) % 3;
-			config().save();
-			b.setMessage(styleLabel());
-		}).bounds(left, y, COL_W, BTN_H).build());
-		y += BTN_H + GAP;
-		addRenderableWidget(toggle(left, y, "Compact mode", config().compact, v -> config().compact = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(toggle(left, y, "Hide with F3", config().hideWithDebug, v -> config().hideWithDebug = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(Button.builder(customColorsLabel(), b -> {
-			config().useCustomColors = !config().useCustomColors;
-			config().save();
-			b.setMessage(customColorsLabel());
-			this.rebuildWidgets();
-		}).bounds(left, y, COL_W, BTN_H).build());
-
-		// ---- Right column: line toggles ----
-		y = top;
-		addRenderableWidget(toggle(right, y, "Show FPS", config().showFps, v -> config().showFps = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(toggle(right, y, "Show Ping", config().showPing, v -> config().showPing = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(toggle(right, y, "Ping graph", config().showPingGraph, v -> config().showPingGraph = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(toggle(right, y, "FPS graph", config().showFpsGraph, v -> config().showFpsGraph = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(toggle(right, y, "Show TPS", config().showTps, v -> config().showTps = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(toggle(right, y, "Show RAM", config().showRam, v -> config().showRam = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(toggle(right, y, "Show entities", config().showEntities, v -> config().showEntities = v));
-		y += BTN_H + GAP;
-		addRenderableWidget(toggle(right, y, "Show chunks", config().showChunks, v -> config().showChunks = v));
-
-		// ---- Second block: alerts + colors + profiles ----
-		int y2 = y + BTN_H + GAP * 3;
-		addRenderableWidget(new ThresholdBox(right, y2, COL_W, "Ping alert (ms)", config().pingAlertMs, v -> config().pingAlertMs = v));
-		addRenderableWidget(new ThresholdBox(left, y2, COL_W, "FPS alert", config().fpsAlert, v -> config().fpsAlert = v));
-
-		if (config().useCustomColors) {
-			int y3 = y2 + BTN_H + GAP;
-			addRenderableWidget(new HexBox(left, y3, COL_W, "Background", () -> config().bgColor, v -> config().bgColor = v));
-			addRenderableWidget(new HexBox(right, y3, COL_W, "Label", () -> config().labelColor, v -> config().labelColor = v));
-			y3 += BTN_H + GAP;
-			addRenderableWidget(new HexBox(left, y3, COL_W, "FPS value", () -> config().fpsColor, v -> config().fpsColor = v));
-			addRenderableWidget(new HexBox(right, y3, COL_W, "Ping value", () -> config().pingColor, v -> config().pingColor = v));
-			y3 += BTN_H + GAP;
-			addRenderableWidget(new OpacitySlider(left, y3, COL_W * 2 + GAP, BTN_H));
-		}
-
-		// ---- Bottom row ----
-		int bottom = this.height - BTN_H - 8;
-		if (FpsPingConfig.currentServerIp() != null) {
-			if (FpsPingConfig.hasServerProfile()) {
-				addRenderableWidget(Button.builder(Component.literal("Delete server profile"), b -> {
-					FpsPingConfig.deleteServerProfile();
+		switch (this.tab) {
+			case 0 -> { // Display
+				addRenderableWidget(toggle(left, y, "Enabled", () -> config().enabled, v -> config().enabled = v));
+				y += BTN_H + GAP;
+				addRenderableWidget(Button.builder(themeLabel(), b -> {
+					config().theme = config().theme.next();
+					config().save();
+					b.setMessage(themeLabel());
+				}).bounds(left, y, COL_W, BTN_H).build());
+				y += BTN_H + GAP;
+				addRenderableWidget(new ScaleSlider(left, y, COL_W, BTN_H));
+				y += BTN_H + GAP;
+				addRenderableWidget(Button.builder(styleLabel(), b -> {
+					config().textStyle = (config().textStyle + 1) % 3;
+					config().save();
+					b.setMessage(styleLabel());
+				}).bounds(left, y, COL_W, BTN_H).build());
+				y += BTN_H + GAP;
+				addRenderableWidget(toggle(left, y, "Compact mode", () -> config().compact, v -> config().compact = v));
+				y += BTN_H + GAP;
+				addRenderableWidget(toggle(left, y, "Hide with F3", () -> config().hideWithDebug, v -> config().hideWithDebug = v));
+			}
+			case 1 -> { // Stats (two columns of line/graph toggles)
+				int colY = y;
+				addRenderableWidget(toggle(left, colY, "Show FPS", () -> config().showFps, v -> config().showFps = v));
+				addRenderableWidget(toggle(right, colY, "Ping graph", () -> config().showPingGraph, v -> config().showPingGraph = v));
+				colY += BTN_H + GAP;
+				addRenderableWidget(toggle(left, colY, "Show Ping", () -> config().showPing, v -> config().showPing = v));
+				addRenderableWidget(toggle(right, colY, "FPS graph", () -> config().showFpsGraph, v -> config().showFpsGraph = v));
+				colY += BTN_H + GAP;
+				addRenderableWidget(toggle(left, colY, "Show TPS", () -> config().showTps, v -> config().showTps = v));
+				addRenderableWidget(toggle(right, colY, "Show RAM", () -> config().showRam, v -> config().showRam = v));
+				colY += BTN_H + GAP;
+				addRenderableWidget(toggle(left, colY, "Show entities", () -> config().showEntities, v -> config().showEntities = v));
+				addRenderableWidget(toggle(right, colY, "Show chunks", () -> config().showChunks, v -> config().showChunks = v));
+			}
+			case 2 -> { // Alerts
+				addRenderableWidget(new ThresholdBox(left, y, COL_W, "Ping alert (ms)", config().pingAlertMs, v -> config().pingAlertMs = v));
+				y += BTN_H + GAP + 10;
+				addRenderableWidget(new ThresholdBox(left, y, COL_W, "FPS alert", config().fpsAlert, v -> config().fpsAlert = v));
+				y += BTN_H + GAP + 10;
+				addRenderableWidget(toggle(left, y, "Alert sound", () -> config().alertSound, v -> config().alertSound = v));
+			}
+			case 3 -> { // Colors
+				addRenderableWidget(Button.builder(customColorsLabel(), b -> {
+					config().useCustomColors = !config().useCustomColors;
+					config().save();
 					this.rebuildWidgets();
-				}).bounds(left, bottom, COL_W, BTN_H).build());
-			} else {
-				addRenderableWidget(Button.builder(Component.literal("Save as server profile"), b -> {
-					FpsPingConfig.saveAsServerProfile();
-					this.rebuildWidgets();
-				}).bounds(left, bottom, COL_W, BTN_H).build());
+				}).bounds(left, y, COL_W * 2 + GAP, BTN_H).build());
+				if (config().useCustomColors) {
+					int cy = y + BTN_H + GAP + 10;
+					addRenderableWidget(new HexBox(left, cy, COL_W, "Background", () -> config().bgColor, v -> config().bgColor = v));
+					addRenderableWidget(new HexBox(right, cy, COL_W, "Label", () -> config().labelColor, v -> config().labelColor = v));
+					cy += BTN_H + GAP + 10;
+					addRenderableWidget(new HexBox(left, cy, COL_W, "FPS value", () -> config().fpsColor, v -> config().fpsColor = v));
+					addRenderableWidget(new HexBox(right, cy, COL_W, "Ping value", () -> config().pingColor, v -> config().pingColor = v));
+					cy += BTN_H + GAP + 10;
+					addRenderableWidget(new OpacitySlider(left, cy, COL_W * 2 + GAP, BTN_H));
+				}
+			}
+			default -> { // Profile
+				if (FpsPingConfig.currentServerIp() != null) {
+					addRenderableWidget(Button.builder(
+							Component.literal(FpsPingConfig.hasServerProfile() ? "Delete server profile" : "Save as server profile"),
+							b -> {
+								if (FpsPingConfig.hasServerProfile()) {
+									FpsPingConfig.deleteServerProfile();
+								} else {
+									FpsPingConfig.saveAsServerProfile();
+								}
+								this.rebuildWidgets();
+							}).bounds(left, y, COL_W * 2 + GAP, BTN_H).build());
+					y += BTN_H + GAP;
+					if (FpsPingConfig.hasServerProfile()) {
+						addRenderableWidget(Button.builder(
+								Component.literal(FpsPingConfig.editingProfile() ? "Edit global settings instead" : "Edit this server's profile"),
+								b -> {
+									FpsPingConfig.setEditingProfile(!FpsPingConfig.editingProfile());
+									this.rebuildWidgets();
+								}).bounds(left, y, COL_W * 2 + GAP, BTN_H).build());
+						y += BTN_H + GAP;
+					}
+				} else {
+					graphics_centeredNote(y, "Connect to a server to create a profile");
+					y += BTN_H + GAP + 6;
+				}
+				// Two-click confirm so a misclick can't wipe the config.
+				addRenderableWidget(Button.builder(
+						Component.literal(this.resetArmed ? "Are you sure? Click again" : "Reset to defaults"),
+						b -> {
+							if (this.resetArmed) {
+								config().resetToDefaults();
+								config().save();
+								this.rebuildWidgets();
+							} else {
+								this.resetArmed = true;
+								b.setMessage(Component.literal("Are you sure? Click again"));
+							}
+						}).bounds(left, y, COL_W * 2 + GAP, BTN_H).build());
 			}
 		}
-		if (FpsPingConfig.editingProfile()) {
-			addRenderableWidget(Button.builder(Component.literal("Edit global settings"), b -> {
-				FpsPingConfig.setEditingProfile(false);
-				this.rebuildWidgets();
-			}).bounds(right, bottom, COL_W, BTN_H).build());
-		} else if (FpsPingConfig.hasServerProfile()) {
-			addRenderableWidget(Button.builder(Component.literal("Edit server profile"), b -> {
-				FpsPingConfig.setEditingProfile(true);
-				this.rebuildWidgets();
-			}).bounds(right, bottom, COL_W, BTN_H).build());
-		}
+
 		addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose())
-				.bounds(this.width / 2 - COL_W / 2, bottom - BTN_H - GAP, COL_W, BTN_H).build());
+				.bounds(this.width / 2 - COL_W / 2, this.height - BTN_H - 8, COL_W, BTN_H).build());
 	}
 
-	private Button toggle(int x, int y, String label, boolean initial, java.util.function.Consumer<Boolean> setter) {
-		return Button.builder(boolLabel(label, initial), b -> {
-			setter.accept(!boolState(b));
+	private void graphics_centeredNote(int y, String text) {
+		// Rendered in render(); init has no graphics yet, so stash it.
+		this.note = text;
+		this.noteY = y;
+	}
+
+	private String note;
+	private int noteY;
+
+	// ---- Widgets ----
+
+	/**
+	 * ON/OFF button. State lives in a captured holder, not the label text.
+	 */
+	private Button toggle(int x, int y, String label, java.util.function.Supplier<Boolean> getter,
+			java.util.function.Consumer<Boolean> setter) {
+		boolean[] state = { getter.get() };
+		Button b = Button.builder(boolLabel(label, state[0]), btn -> {
+			state[0] = !state[0];
+			setter.accept(state[0]);
 			config().save();
-			b.setMessage(boolLabel(label, boolState(b)));
+			btn.setMessage(boolLabel(label, state[0]));
 		}).bounds(x, y, COL_W, BTN_H).build();
-	}
-
-	/** Button messages carry the state; parse it back out of the label. */
-	private static boolean boolState(Button b) {
-		return b.getMessage().getString().endsWith("ON");
+		return b;
 	}
 
 	private static Component boolLabel(String label, boolean value) {
@@ -229,8 +277,14 @@ public final class FpsPingSettingsScreen extends Screen {
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
 		super.render(graphics, mouseX, mouseY, partialTick);
 		graphics.drawCenteredString(this.font, this.title, this.width / 2, 12, 0xFFFFFFFF);
+		// Highlight the active tab with an underline.
+		int ux = tabX(this.tab);
+		graphics.fill(ux, 26 + BTN_H, ux + TAB_W, 26 + BTN_H + 2, 0xFF55FF55);
+		if (this.note != null) {
+			graphics.drawCenteredString(this.font, this.note, this.width / 2, this.noteY + 5, 0xFFAAAAAA);
+		}
 		graphics.drawCenteredString(this.font, "Drag the box to move it", this.width / 2,
-				this.height - BTN_H * 2 - 22, 0xFFAAAAAA);
+				this.height - BTN_H * 2 - 14, 0xFFAAAAAA);
 		// Live preview of the overlay with the current settings.
 		HudOverlay.render(graphics, Minecraft.getInstance(), true);
 	}
@@ -317,7 +371,6 @@ public final class FpsPingSettingsScreen extends Screen {
 	private final class HexBox extends EditBox {
 		private final java.util.function.Supplier<Integer> getter;
 		private final java.util.function.Consumer<Integer> setter;
-		private boolean valid = true;
 
 		private HexBox(int x, int y, int w, String label, java.util.function.Supplier<Integer> getter,
 				java.util.function.Consumer<Integer> setter) {
@@ -329,8 +382,7 @@ public final class FpsPingSettingsScreen extends Screen {
 			setValue(String.format("%06X", getter.get() & 0xFFFFFF));
 			setHint(Component.literal("RRGGBB"));
 			setResponder(s -> {
-				this.valid = s.length() == 6;
-				if (this.valid) {
+				if (s.length() == 6) {
 					try {
 						setter.accept((int) Long.parseLong(s.toLowerCase(Locale.ROOT), 16) | 0xFF000000);
 						config().save();

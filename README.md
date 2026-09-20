@@ -55,7 +55,7 @@ The mod jar is written to `build/libs/fpsping-<version>.jar`.
 1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft **1.21.11** (0.19.0+)
 2. Install [Fabric API](https://modrinth.com/mod/fabric-api) (`0.141.x+1.21.11` or newer)
 3. Optional: install [Mod Menu](https://modrinth.com/mod/modmenu)
-4. Drop `build/libs/fpsping-1.1.0.jar` into your `mods` folder
+4. Drop `build/libs/fpsping-1.1.1.jar` into your `mods` folder
 
 ## Project layout
 

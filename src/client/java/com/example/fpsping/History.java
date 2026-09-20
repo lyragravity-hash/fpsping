@@ -57,8 +57,10 @@ public final class History {
 		return max(ping, pingCount, 100);
 	}
 
+	/** Autoscaled: 30 floor, rounded up to a multiple of 30 so bars stay readable. */
 	public static int fpsMax() {
-		return Math.max(60, max(fps, fpsCount, 60));
+		int peak = max(fps, fpsCount, 0);
+		return Math.max(30, ((peak + 29) / 30) * 30);
 	}
 
 	private static int max(int[] array, int count, int floor) {

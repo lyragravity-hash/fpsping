@@ -17,7 +17,7 @@ public final class Alerts {
 	}
 
 	public static void check(Minecraft minecraft, FpsPingConfig cfg) {
-		if (minecraft.player == null) {
+		if (minecraft.player == null || (cfg.pingAlertMs <= 0 && cfg.fpsAlert <= 0)) {
 			return;
 		}
 		long now = System.currentTimeMillis();

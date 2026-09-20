@@ -128,6 +128,11 @@ public final class FpsPingConfig {
 
 	public FpsPingConfig copy() {
 		FpsPingConfig c = new FpsPingConfig();
+		c.copyFrom(this);
+		return c;
+	}
+
+	private void copyFrom(FpsPingConfig c) {
 		c.enabled = enabled;
 		c.compact = compact;
 		c.scale = scale;
@@ -153,7 +158,11 @@ public final class FpsPingConfig {
 		c.fpsAlert = fpsAlert;
 		c.alertSound = alertSound;
 		c.hideWithDebug = hideWithDebug;
-		return c;
+	}
+
+	/** Restores every option to its fresh-install default (position → top right). */
+	public void resetToDefaults() {
+		copyFrom(new FpsPingConfig());
 	}
 
 	// ---- Persistence ----
