@@ -11,6 +11,9 @@ public final class History {
 	private static final int[] fps = new int[CAPACITY];
 	private static int pingCount;
 	private static int fpsCount;
+	/** Session extremes (not just the ring buffer window). */
+	private static int sessionFpsMin = -1;
+	private static int sessionFpsMax = -1;
 
 	private History() {
 	}
@@ -24,8 +27,27 @@ public final class History {
 	}
 
 	public static void sampleFps(int value) {
-		insert(fps, fpsCount, Math.max(0, value));
+		int v = Math.max(0, value);
+		insert(fps, fpsCount, v);
 		fpsCount = Math.min(fpsCount + 1, CAPACITY);
+		if (sessionFpsMin < 0 || v < sessionFpsMin) {
+			sessionFpsMin = v;
+		}
+		if (v > sessionFpsMax) {
+			sessionFpsMax = v;
+		}
+	}
+
+	public static int sessionFpsMin() {
+		return Math.max(0, sessionFpsMin);
+	}
+
+	public static int sessionFpsMax() {
+		return Math.max(0, sessionFpsMax);
+	}
+
+	public static boolean hasFpsSession() {
+		return sessionFpsMin >= 0;
 	}
 
 	private static void insert(int[] array, int count, int value) {
@@ -74,5 +96,7 @@ public final class History {
 	public static void reset() {
 		pingCount = 0;
 		fpsCount = 0;
+		sessionFpsMin = -1;
+		sessionFpsMax = -1;
 	}
 }

@@ -12,17 +12,20 @@ Drag it anywhere, theme it, graph it — and get warned when lag hits.
 
 ### Overlay
 - **FPS + Ping** always visible, ping color-coded (green < 80 ms · yellow < 150 · red < 300 · dark red above)
-- **Drag anywhere** — open settings and drag the box; it snaps to screen edges and corners
+- **Drag anywhere** — open settings and drag the box; it snaps to screen edges, corners, and center (with on-screen guides)
+- **Show/hide hotkey** (default H, rebindable) — flip the overlay off without opening settings
 - **Compact mode** — one tidy line: `120 fps · 42 ms`
 - **Scale** — 50% to 200% slider
 - **Text styles** — shadow, outline, or plain
+- Optional "hide in menus" behavior
 
 ### Stats & graphs
 - **Ping sparkline** — the last 30 seconds at a glance, spikes impossible to miss
 - **FPS sparkline** — spot drops without staring at numbers
+- **FPS min/max** — worst and best frames this session
 - **Server TPS** — estimated client-side from server time packets, **no server mod needed**
 - **RAM**, **entities rendered**, and **chunk** counts — the F3 numbers you actually care about, always on
-- Toggle every line independently
+- Toggle every line independently, and rename the labels to anything you like
 
 ### Alerts
 - Set a **ping threshold** (e.g. 200 ms) or a **minimum FPS** — get an action-bar warning
@@ -31,11 +34,9 @@ Drag it anywhere, theme it, graph it — and get warned when lag hits.
 ### Themes & colors
 - **4 built-in themes**: Dark, Light, Transparent, and Rainbow (values cycle hues over time)
 - **Custom colors**: background color + opacity slider, label / FPS / ping colors —
-  enter hex codes with a live swatch
-
-### Profiles
-- **Per-server profiles**: "Save as server profile" while connected, and that server
-  keeps its own look — different theme for your SMP, minimal box for minigames
+  enter hex codes with a live swatch### Profiles
+- **Per-server profiles**: "Save as server profile" while connected, and that server keeps its own look — different theme for your SMP, minimal box for minigames
+- **Update notices**: checks Modrinth once per launch and mentions a new version in chat (reads the public project page only)
 - Everything persists to `config/fpsping.json`
 
 ## 🎮 How to use
@@ -69,8 +70,8 @@ Built for **1.21.11**. (Port requests welcome in the Discord/issues.)
 
 ## 📋 Links
 
-- **Source:** _(add your GitHub repo URL here)_
-- **Issues:** _(add your tracker URL here)_
+- **Source:** https://github.com/lyragravity-hash/fpsping
+- **Issues:** https://github.com/lyragravity-hash/fpsping/issues
 - **License:** MIT
 
 ---

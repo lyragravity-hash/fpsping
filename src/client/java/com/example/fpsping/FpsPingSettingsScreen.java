@@ -83,8 +83,6 @@ public final class FpsPingSettingsScreen extends Screen {
 				}).bounds(left, y, COL_W, BTN_H).build());
 				y += BTN_H + GAP;
 				addRenderableWidget(toggle(left, y, "Compact mode", () -> config().compact, v -> config().compact = v));
-				y += BTN_H + GAP;
-				addRenderableWidget(toggle(left, y, "Hide with F3", () -> config().hideWithDebug, v -> config().hideWithDebug = v));
 			}
 			case 1 -> { // Stats (two columns of line/graph toggles)
 				int colY = y;
@@ -99,13 +97,20 @@ public final class FpsPingSettingsScreen extends Screen {
 				colY += BTN_H + GAP;
 				addRenderableWidget(toggle(left, colY, "Show entities", () -> config().showEntities, v -> config().showEntities = v));
 				addRenderableWidget(toggle(right, colY, "Show chunks", () -> config().showChunks, v -> config().showChunks = v));
+				colY += BTN_H + GAP;
+				addRenderableWidget(toggle(left, colY, "FPS min/max", () -> config().showFpsRange, v -> config().showFpsRange = v));
 			}
-			case 2 -> { // Alerts
+			case 2 -> { // Alerts + behavior
 				addRenderableWidget(new ThresholdBox(left, y, COL_W, "Ping alert (ms)", config().pingAlertMs, v -> config().pingAlertMs = v));
-				y += BTN_H + GAP + 10;
-				addRenderableWidget(new ThresholdBox(left, y, COL_W, "FPS alert", config().fpsAlert, v -> config().fpsAlert = v));
+				addRenderableWidget(new ThresholdBox(right, y, COL_W, "FPS alert", config().fpsAlert, v -> config().fpsAlert = v));
 				y += BTN_H + GAP + 10;
 				addRenderableWidget(toggle(left, y, "Alert sound", () -> config().alertSound, v -> config().alertSound = v));
+				y += BTN_H + GAP;
+				addRenderableWidget(toggle(left, y, "Hide with F3", () -> config().hideWithDebug, v -> config().hideWithDebug = v));
+				addRenderableWidget(toggle(right, y, "Hide in menus", () -> config().hideInMenus, v -> config().hideInMenus = v));
+				y += BTN_H + GAP + 10;
+				addRenderableWidget(new LabelBox(left, y, COL_W, "FPS label", () -> config().labelFps, v -> config().labelFps = v));
+				addRenderableWidget(new LabelBox(right, y, COL_W, "Ping label", () -> config().labelPing, v -> config().labelPing = v));
 			}
 			case 3 -> { // Colors
 				addRenderableWidget(Button.builder(customColorsLabel(), b -> {
@@ -235,6 +240,9 @@ public final class FpsPingSettingsScreen extends Screen {
 			FpsPingConfig cfg = config();
 			cfg.posX = Mth.clamp((float) (event.x() / this.width), 0.0f, 1.0f);
 			cfg.posY = Mth.clamp((float) (event.y() / this.height), 0.0f, 1.0f);
+			// Remember proximity to center so render() can draw the guides.
+			this.wasCenteredX = Math.abs(cfg.posX - 0.5f) < 0.02f;
+			this.wasCenteredY = Math.abs(cfg.posY - 0.5f) < 0.02f;
 			return true;
 		}
 		return super.mouseDragged(event, dragX, dragY);
@@ -246,10 +254,16 @@ public final class FpsPingSettingsScreen extends Screen {
 			this.dragging = false;
 			snapToEdges(config());
 			config().save();
+			this.wasCenteredX = false;
+			this.wasCenteredY = false;
 			return true;
 		}
 		return super.mouseReleased(event);
 	}
+
+	/** Set while the dragged box is within snap range of screen center. */
+	private boolean wasCenteredX;
+	private boolean wasCenteredY;
 
 	/** Snaps posX/posY to the nearest edge/corner when the box is close to one. */
 	private static void snapToEdges(FpsPingConfig cfg) {
@@ -284,6 +298,13 @@ public final class FpsPingSettingsScreen extends Screen {
 				26 + BTN_H + 8, 0xFFAAAAAA);
 		if (this.note != null) {
 			graphics.drawCenteredString(this.font, this.note, this.width / 2, this.noteY + 5, 0xFFAAAAAA);
+		}
+		// Center snap guides while dragging (or holding position at center).
+		if (this.dragging || this.wasCenteredX) {
+			graphics.fill(this.width / 2, 0, this.width / 2 + 1, this.height, 0xFF55FF55);
+		}
+		if (this.dragging || this.wasCenteredY) {
+			graphics.fill(0, this.height / 2, this.width, this.height / 2 + 1, 0xFF55FF55);
 		}
 		// Live preview of the overlay with the current settings.
 		HudOverlay.render(graphics, Minecraft.getInstance(), true);
@@ -336,6 +357,33 @@ public final class FpsPingSettingsScreen extends Screen {
 		protected void applyValue() {
 			config().bgOpacity = Math.round(this.value * 20.0) / 20.0f;
 			config().save();
+		}
+	}
+
+	/** Free-text box for custom line labels. */
+	private final class LabelBox extends EditBox {
+		private final java.util.function.Supplier<String> getter;
+		private final java.util.function.Consumer<String> setter;
+
+		private LabelBox(int x, int y, int w, String label, java.util.function.Supplier<String> getter,
+				java.util.function.Consumer<String> setter) {
+			super(FpsPingSettingsScreen.this.font, x, y, w - 60, BTN_H, Component.literal(label));
+			this.getter = getter;
+			this.setter = setter;
+			setMaxLength(16);
+			setValue(getter.get() == null ? "" : getter.get());
+			setHint(Component.literal("default"));
+			setResponder(s -> {
+				setter.accept(s);
+				config().save();
+			});
+		}
+
+		@Override
+		public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+			super.renderWidget(graphics, mouseX, mouseY, partialTick);
+			graphics.drawString(FpsPingSettingsScreen.this.font, this.getMessage().getString(),
+					getX() - 1, getY() - 10, 0xFFAAAAAA);
 		}
 	}
 

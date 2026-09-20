@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0
+
+The visibility release. Biggest addition: a proper show/hide hotkey (default **H**, rebindable) so you can flip the overlay off for screenshots or cinematic moments without digging into settings.
+
+Also new:
+
+- "Hide in menus" option — overlay only draws in-world, not behind pause/inventory screens
+- Custom labels: rename "FPS"/"Ping" to whatever you like ("Frames", "Ping", "МС", anything that fits your language)
+- FPS min/max line — worst and best frames this session, next to the current number
+- The mod now checks Modrinth once per launch and mentions in chat when a newer version exists (it only reads the public project page; nothing is sent anywhere)
+- Center snap guides — while dragging the box, green lines appear when you hit the exact middle of the screen
+
 ## 1.1.2
 
 Small fix: the "Drag the box to move it" hint used to sit on top of the bottom buttons on short windows. It lives under the tab row now.

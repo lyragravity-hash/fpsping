@@ -48,11 +48,15 @@ public final class HudOverlay implements net.fabricmc.fabric.api.client.renderin
 	public void render(GuiGraphics graphics, DeltaTracker tickCounter) {
 		Minecraft minecraft = Minecraft.getInstance();
 		FpsPingConfig cfg = FpsPingConfig.active();
-		if (minecraft.player == null || !cfg.enabled) {
+		if (minecraft.player == null || !cfg.enabled || cfg.hiddenByHotkey) {
 			lastLayout = null;
 			return;
 		}
 		if (cfg.hideWithDebug && minecraft.getDebugOverlay().showDebugScreen()) {
+			lastLayout = null;
+			return;
+		}
+		if (cfg.hideInMenus && minecraft.screen != null) {
 			lastLayout = null;
 			return;
 		}
@@ -96,10 +100,14 @@ public final class HudOverlay implements net.fabricmc.fabric.api.client.renderin
 			}
 		} else {
 			if (cfg.showFps) {
-				lines.add(List.of(new Seg("FPS: ", labelColor), new Seg(String.valueOf(fps), fpsColor)));
+				lines.add(List.of(new Seg(label(cfg.labelFps, "FPS") + ": ", labelColor), new Seg(String.valueOf(fps), fpsColor)));
 			}
 			if (cfg.showPing && ping != null) {
-				lines.add(List.of(new Seg("Ping: ", labelColor), new Seg(ping + " ms", pingColor)));
+				lines.add(List.of(new Seg(label(cfg.labelPing, "Ping") + ": ", labelColor), new Seg(ping + " ms", pingColor)));
+			}
+			if (cfg.showFpsRange && History.hasFpsSession()) {
+				lines.add(List.of(new Seg(label(cfg.labelFps, "FPS") + " min/max: ", labelColor),
+						new Seg(History.sessionFpsMin() + " / " + History.sessionFpsMax(), fpsColor)));
 			}
 			if (cfg.showTps && minecraft.getCurrentServer() != null && TpsTracker.isValid()) {
 				double tps = TpsTracker.tps();
@@ -224,6 +232,11 @@ public final class HudOverlay implements net.fabricmc.fabric.api.client.renderin
 			case STYLE_PLAIN -> graphics.drawString(font, text, x, y, color, false);
 			default -> graphics.drawString(font, text, x, y, color, true);
 		}
+	}
+
+	/** Custom label if set, otherwise the English default. */
+	private static String label(String custom, String fallback) {
+		return custom == null || custom.isBlank() ? fallback : custom;
 	}
 
 	private static int pingColor(int ping) {

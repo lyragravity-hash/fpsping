@@ -27,6 +27,8 @@ public final class FpsPingConfig {
 
 	// ---- Toggle & layout ----
 	public boolean enabled = true;
+	/** Flipped at runtime by the visibility key; intentionally not persisted. */
+	public transient boolean hiddenByHotkey = false;
 	public boolean compact = false;
 	public float scale = 1.0f;
 	/** Normalized top-left position of the box (1.0 / 0.0 = top right). */
@@ -44,6 +46,10 @@ public final class FpsPingConfig {
 	public boolean showEntities = false;
 	public boolean showChunks = false;
 	public boolean showTps = false;
+	public boolean showFpsRange = false;
+	/** "FPS", "Ping" etc. leave empty for English defaults. */
+	public String labelFps = "";
+	public String labelPing = "";
 
 	// ---- Look ----
 	public HudTheme theme = HudTheme.DARK;
@@ -64,6 +70,7 @@ public final class FpsPingConfig {
 
 	// ---- Behavior ----
 	public boolean hideWithDebug = true;
+	public boolean hideInMenus = false;
 
 	// ---- Instance management ----
 	private static FpsPingConfig global = new FpsPingConfig();
@@ -147,6 +154,9 @@ public final class FpsPingConfig {
 		c.showEntities = showEntities;
 		c.showChunks = showChunks;
 		c.showTps = showTps;
+		c.showFpsRange = showFpsRange;
+		c.labelFps = labelFps;
+		c.labelPing = labelPing;
 		c.theme = theme;
 		c.useCustomColors = useCustomColors;
 		c.bgColor = bgColor;
@@ -158,6 +168,7 @@ public final class FpsPingConfig {
 		c.fpsAlert = fpsAlert;
 		c.alertSound = alertSound;
 		c.hideWithDebug = hideWithDebug;
+		c.hideInMenus = hideInMenus;
 	}
 
 	/** Restores every option to its fresh-install default (position → top right). */
@@ -232,6 +243,9 @@ public final class FpsPingConfig {
 		o.addProperty("showEntities", showEntities);
 		o.addProperty("showChunks", showChunks);
 		o.addProperty("showTps", showTps);
+		o.addProperty("showFpsRange", showFpsRange);
+		o.addProperty("labelFps", labelFps);
+		o.addProperty("labelPing", labelPing);
 		o.addProperty("theme", theme.name());
 		o.addProperty("useCustomColors", useCustomColors);
 		o.addProperty("bgColor", bgColor);
@@ -243,6 +257,7 @@ public final class FpsPingConfig {
 		o.addProperty("fpsAlert", fpsAlert);
 		o.addProperty("alertSound", alertSound);
 		o.addProperty("hideWithDebug", hideWithDebug);
+		o.addProperty("hideInMenus", hideInMenus);
 		return o;
 	}
 
@@ -261,6 +276,9 @@ public final class FpsPingConfig {
 		if (o.has("showEntities")) showEntities = o.get("showEntities").getAsBoolean();
 		if (o.has("showChunks")) showChunks = o.get("showChunks").getAsBoolean();
 		if (o.has("showTps")) showTps = o.get("showTps").getAsBoolean();
+		if (o.has("showFpsRange")) showFpsRange = o.get("showFpsRange").getAsBoolean();
+		if (o.has("labelFps")) labelFps = o.get("labelFps").getAsString();
+		if (o.has("labelPing")) labelPing = o.get("labelPing").getAsString();
 		if (o.has("theme")) {
 			try {
 				theme = HudTheme.valueOf(o.get("theme").getAsString().toUpperCase());
@@ -278,5 +296,6 @@ public final class FpsPingConfig {
 		if (o.has("fpsAlert")) fpsAlert = o.get("fpsAlert").getAsInt();
 		if (o.has("alertSound")) alertSound = o.get("alertSound").getAsBoolean();
 		if (o.has("hideWithDebug")) hideWithDebug = o.get("hideWithDebug").getAsBoolean();
+		if (o.has("hideInMenus")) hideInMenus = o.get("hideInMenus").getAsBoolean();
 	}
 }

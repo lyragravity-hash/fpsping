@@ -1,5 +1,7 @@
 {
 	"key.fpsping.settings": "Open FPS & Ping Monitor settings",
+	"key.fpsping.toggle": "Toggle FPS & Ping overlay",
 	"fpsping.alert.ping": "High ping: %s ms!",
-	"fpsping.alert.fps": "Low FPS: %s!"
+	"fpsping.alert.fps": "Low FPS: %s!",
+	"fpsping.update": "FPS & Ping Monitor %s is available on Modrinth!"
 }

@@ -17,16 +17,25 @@ public final class FpsPingModClient implements ClientModInitializer {
 	public static final String MOD_ID = "fpsping";
 
 	private static KeyMapping openSettingsKey;
+	private static KeyMapping toggleOverlayKey;
 	private static int tickCounter;
 
 	@Override
 	public void onInitializeClient() {
 		FpsPingConfig.load();
+		UpdateChecker.check();
 
 		openSettingsKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 				"key.fpsping.settings",
 				InputConstants.Type.KEYSYM,
 				GLFW.GLFW_KEY_O,
+				KeyMapping.Category.MISC
+		));
+
+		toggleOverlayKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+				"key.fpsping.toggle",
+				InputConstants.Type.KEYSYM,
+				GLFW.GLFW_KEY_H,
 				KeyMapping.Category.MISC
 		));
 
@@ -38,11 +47,17 @@ public final class FpsPingModClient implements ClientModInitializer {
 			while (openSettingsKey.consumeClick()) {
 				client.setScreen(new FpsPingSettingsScreen(client.screen));
 			}
+			while (toggleOverlayKey.consumeClick()) {
+				FpsPingConfig.active().hiddenByHotkey = !FpsPingConfig.active().hiddenByHotkey;
+			}
 
 			FpsPingConfig cfg = FpsPingConfig.active();
 			tickCounter++;
 			if (tickCounter % 10 == 0) { // twice a second
 				Stats.sample(client, cfg);
+			}
+			if (tickCounter % 20 == 0) {
+				UpdateChecker.tickNotice(client);
 			}
 			if (cfg.enabled && client.player != null && client.screen == null) {
 				Alerts.check(client, cfg);
