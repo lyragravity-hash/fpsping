@@ -91,20 +91,28 @@ jobs:
             exit 1
           fi
         env:
-          MODRINTH_ID: YOUR_MODRINTH_PROJECT_ID
+          MODRINTH_ID: fps-ping-monitor
+
+      # Send only the newest changelog section to Modrinth, not the whole file.
+      - name: Extract changelog for this version
+        if: env.MODRINTH_TOKEN != ''
+        run: |
+          awk '/^## /{if (found) exit; found=1} found' publishing/CHANGELOG.md > release-changelog.md
+          if [ ! -s release-changelog.md ]; then echo "No changelog section found for this release — using full changelog."; cp publishing/CHANGELOG.md release-changelog.md; fi
+          head -c 32000 release-changelog.md > release-changelog.tmp && mv release-changelog.tmp release-changelog.md
 
       - name: Publish to Modrinth
         if: env.MODRINTH_TOKEN != ''
         uses: Kir-Antipov/mc-publish@v3.3.1
         with:
-          modrinth-id: YOUR_MODRINTH_PROJECT_ID
+          modrinth-id: fps-ping-monitor
           modrinth-token: "${{ env.MODRINTH_TOKEN }}"
           files: build/libs/!(*-sources.jar)
           files-secondary: build/libs/*-sources.jar
           name: "FPS & Ping Monitor ${{ env.VERSION }}"
           version: "${{ env.VERSION }}"
           version-type: release
-          changelog-file: publishing/CHANGELOG.md
+          changelog-file: release-changelog.md
           loaders: fabric
           game-versions: "${{ env.MINECRAFT_VERSION }}"
           java: "${{ env.JAVA_VERSION }}"
