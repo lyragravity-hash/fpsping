@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  MINECRAFT_VERSION: 1.21.11
+  JAVA_VERSION: 21
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,11 +19,11 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: Set up Gradle (with dependency caching)
         uses: gradle/actions/setup-gradle@v4
@@ -34,22 +38,77 @@ jobs:
           path: build/libs/*.jar
           if-no-files-found: error
 
-  # Publishes a GitHub Release with the jars when you push a tag like v1.1.0.
-  release:
+  # Publishes the GitHub release + Modrinth version when you push a tag like v1.1.0.
+  #
+  # One-time Modrinth setup:
+  #   1. Create the project on Modrinth and upload v1.1.0 manually (see publishing/CHECKLIST.md)
+  #   2. Put its ID or slug into `modrinth-id` below (two places: the guard step and the publish step)
+  #   3. Add a repo secret MODRINTH_TOKEN: Modrinth -> Settings -> Authorization token
+  #      (token needs the "Create versions" scope)
+  # Until MODRINTH_TOKEN exists, tagged pushes still create the GitHub release and skip Modrinth.
+  publish:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download built jars
         uses: actions/download-artifact@v4
         with:
           name: fpsping-jars
-          path: jars
+          path: build/libs
+
+      # The tag and the built jar must agree, or we'd publish the wrong files.
+      - name: Extract version and verify tag
+        run: |
+          VERSION="$(grep -E '^version=' gradle.properties | cut -d= -f2 | tr -d ' \r')"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          if [ "v${VERSION}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match version ${VERSION} from gradle.properties. Update gradle.properties (or re-tag) so they match."
+            exit 1
+          fi
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: jars/*.jar
+          files: build/libs/*.jar
           generate_release_notes: true
+
+      - name: Check Modrinth project id
+        if: env.MODRINTH_TOKEN != ''
+        run: |
+          if [ "${MODRINTH_ID}" = "YOUR_MODRINTH_PROJECT_ID" ]; then
+            echo "::error::MODRINTH_TOKEN is set, but modrinth-id is still the placeholder. Create the project on Modrinth, then put its ID or slug into .github/workflows/build.yml (publish job) and commit."
+            exit 1
+          fi
+        env:
+          MODRINTH_ID: YOUR_MODRINTH_PROJECT_ID
+
+      - name: Publish to Modrinth
+        if: env.MODRINTH_TOKEN != ''
+        uses: Kir-Antipov/mc-publish@v3.3.1
+        with:
+          modrinth-id: YOUR_MODRINTH_PROJECT_ID
+          modrinth-token: "${{ env.MODRINTH_TOKEN }}"
+          files: build/libs/!(*-sources.jar)
+          files-secondary: build/libs/*-sources.jar
+          name: "FPS & Ping Monitor ${{ env.VERSION }}"
+          version: "${{ env.VERSION }}"
+          version-type: release
+          changelog-file: publishing/CHANGELOG.md
+          loaders: fabric
+          game-versions: "${{ env.MINECRAFT_VERSION }}"
+          java: "${{ env.JAVA_VERSION }}"
+          dependencies: |
+            fabric-api(required)
+            modmenu(optional)
+
+      - name: Modrinth publishing skipped
+        if: env.MODRINTH_TOKEN == ''
+        run: echo "::warning::MODRINTH_TOKEN secret is not set — skipped publishing to Modrinth. The GitHub release was still created."

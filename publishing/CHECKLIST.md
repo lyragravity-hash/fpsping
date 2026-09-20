@@ -52,7 +52,20 @@ Everything below is ordered. Items marked **[YOU]** need info only you have.
 
 ## 5. Future releases
 
+Once CI is set up (`.github/workflows/build.yml`), releasing is tag-driven:
+
 1. Bump `version` in `gradle.properties`
 2. Add a section to `publishing/CHANGELOG.md`
-3. `./gradlew build`, upload the new jar, set game versions/loaders/dependencies
-4. Keep `MODRINTH_PAGE.md` in sync with any new features
+3. Commit, then tag and push:
+   ```bash
+   git tag v1.1.1 && git push origin main --tags
+   ```
+4. CI builds, verifies the tag matches the version, creates the GitHub release,
+   and publishes to Modrinth (needs the `MODRINTH_TOKEN` repo secret and the
+   project ID filled into the workflow's `modrinth-id`)
+5. Keep `MODRINTH_PAGE.md` in sync with any new features
+
+> First-time CI setup for Modrinth: create the project + upload v1.1.0 manually
+> (sections 2–3 above), then put its ID into `modrinth-id` in the workflow and
+> add the `MODRINTH_TOKEN` secret (Modrinth → Settings → Authorization token,
+> "Create versions" scope).
