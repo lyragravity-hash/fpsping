@@ -1,12 +1,15 @@
 # Changelog
 
-## 1.1.1 — Polish release
+## 1.1.1
 
-- **Settings screen redesigned with tabs** (Display / Stats / Alerts / Colors / Profile) — no more widgets running off-screen at high GUI scales
-- **Reset to defaults** button (with a click-twice confirmation)
-- **Alert sound** is now toggleable in the UI (it was config-only before)
-- **FPS graph autoscales** — no longer floored at 60 FPS, so 30–60 FPS machines get a real waveform instead of a flat line
-- Internal: toggle buttons no longer decode their state from label text; alerts skip work entirely when both thresholds are off
+The settings screen was getting crowded. Everything lived in one big two-column block, and once custom colors showed up it would run right past the bottom of the screen at higher GUI scales. It's split into tabs now (Display / Stats / Alerts / Colors / Profile) — same options, just sorted properly.
+
+Also:
+
+- "Reset to defaults" button under the Profile tab. It makes you click twice so you can't wipe your config by accident
+- The alert sound can finally be toggled from the UI (before this you had to dig into config/fpsping.json by hand)
+- The FPS graph scales to your actual peak FPS instead of assuming 60, so on a 30-50 fps machine you get a real waveform and not a flat line
+- Alerts don't do any work at all when both thresholds are off
 
 ## 1.1.0 — Feature release
 
