@@ -5,7 +5,7 @@
 	"name": "FPS & Ping Monitor",
 	"description": "Customizable FPS and ping overlay: draggable box, themes, custom colors, sparkline graphs, server TPS, RAM/entity stats, and lag alerts. Press O to configure.",
 	"authors": [
-		"mfdq"
+		"lyragravity-hash"
 	],
 	"license": "MIT",
 	"environment": "client",
