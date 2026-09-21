@@ -110,8 +110,8 @@ jobs:
         with:
           modrinth-id: ${{ env.MODRINTH_ID }}
           modrinth-token: ${{ env.MODRINTH_TOKEN }}
-          files: build/libs/!(*-sources.jar)
-          files-secondary: build/libs/*-sources.jar
+          # Rely on mc-publish's default globs: the mod jar becomes the primary
+          # file, the -sources jar an additional one (see .github/workflows/build.yml).
           name: "FPS & Ping Monitor ${{ steps.version.outputs.version }}"
           version: ${{ steps.version.outputs.version }}
           version-type: release

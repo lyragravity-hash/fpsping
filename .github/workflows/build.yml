@@ -120,8 +120,10 @@ jobs:
         with:
           modrinth-id: fps-ping-monitor
           modrinth-token: "${{ env.MODRINTH_TOKEN }}"
-          files: build/libs/!(*-sources.jar)
-          files-secondary: build/libs/*-sources.jar
+          # No `files` needed: mc-publish's default globs already pick
+          # build/libs/fpsping-<version>.jar as the primary file and the
+          # -sources jar as an additional one. (files-primary/files-secondary
+          # are deprecated, so we deliberately don't use those.)
           name: "FPS & Ping Monitor ${{ env.VERSION }}"
           version: "${{ env.VERSION }}"
           version-type: release
