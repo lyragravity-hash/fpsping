@@ -1,0 +1,124 @@
+name: Modrinth publish watcher
+
+# Modrinth reviews a project's first version by hand. Until that clears, the project's
+# slug does not resolve through the public API, so the release workflow (build.yml) skips
+# its Modrinth publish and this watcher picks the work up instead.
+#
+# Every 30 minutes it looks at the newest version tag, and if that version isn't on
+# Modrinth yet, it publishes it — reusing the jar already attached to the GitHub release,
+# so there's no rebuild. Once everything is published it exits after two cheap API calls.
+#
+# Nothing to do to keep this working. Delete this file if you'd rather publish by hand.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+env:
+  MINECRAFT_VERSION: 1.21.11
+  JAVA_VERSION: 21
+  MODRINTH_ID: fps-ping-monitor
+
+jobs:
+  publish-pending:
+    if: github.repository == 'lyragravity-hash/fpsping'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Find the newest version tag
+        id: tag
+        run: |
+          TAG="$(git ls-remote --tags --refs --sort=-v:refname "https://github.com/${GITHUB_REPOSITORY}.git" \
+            | awk -F/ '/refs\/tags\/v[0-9]/{print $NF; exit}')"
+          if [ -z "${TAG}" ]; then
+            echo "::error::No version tag found."
+            exit 1
+          fi
+          echo "Found newest tag: ${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository at that tag
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - name: Resolve version from gradle.properties
+        id: version
+        run: |
+          VERSION="$(grep -E '^version=' gradle.properties | cut -d= -f2 | tr -d ' \r')"
+          if [ "v${VERSION}" != "${{ steps.tag.outputs.tag }}" ]; then
+            echo "::error::Tag ${{ steps.tag.outputs.tag }} does not match version ${VERSION} in gradle.properties."
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # Decide what, if anything, this run has to do.
+      - name: Check whether publishing is needed
+        id: check
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ -z "${MODRINTH_TOKEN}" ]; then
+            echo "::warning::MODRINTH_TOKEN secret is not set — nothing to publish."
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! curl -sf --max-time 20 "https://api.modrinth.com/v2/project/${MODRINTH_ID}" > /dev/null; then
+            echo "Modrinth project '${MODRINTH_ID}' still isn't publicly resolvable (awaiting review). Will retry in 30 minutes."
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+            "https://api.modrinth.com/v2/project/${MODRINTH_ID}/version/${VERSION}")"
+          if [ "${CODE}" = "200" ]; then
+            echo "Version ${VERSION} is already published on Modrinth — nothing to do."
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version ${VERSION} is missing from Modrinth (HTTP ${CODE}) — publishing now."
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Reuse the jar CI already attached to the GitHub release: no rebuild needed.
+      - name: Download the released jars
+        if: steps.check.outputs.needed == 'true'
+        run: |
+          mkdir -p build/libs
+          gh release download "${{ steps.tag.outputs.tag }}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern '*fpsping*.jar' \
+            --dir build/libs \
+            --clobber
+
+      # Send only the newest changelog section to Modrinth, not the whole file.
+      - name: Extract changelog for this version
+        if: steps.check.outputs.needed == 'true'
+        run: |
+          awk '/^## /{if (found) exit; found=1} found' publishing/CHANGELOG.md > release-changelog.md
+          if [ ! -s release-changelog.md ]; then echo "No changelog section found — using full changelog."; cp publishing/CHANGELOG.md release-changelog.md; fi
+          head -c 32000 release-changelog.md > release-changelog.tmp && mv release-changelog.tmp release-changelog.md
+
+      - name: Publish to Modrinth
+        if: steps.check.outputs.needed == 'true'
+        uses: Kir-Antipov/mc-publish@v3.3.1
+        with:
+          modrinth-id: ${{ env.MODRINTH_ID }}
+          modrinth-token: ${{ env.MODRINTH_TOKEN }}
+          files: build/libs/!(*-sources.jar)
+          files-secondary: build/libs/*-sources.jar
+          name: "FPS & Ping Monitor ${{ steps.version.outputs.version }}"
+          version: ${{ steps.version.outputs.version }}
+          version-type: release
+          changelog-file: release-changelog.md
+          loaders: fabric
+          game-versions: ${{ env.MINECRAFT_VERSION }}
+          java: ${{ env.JAVA_VERSION }}
+          dependencies: |
+            fabric-api(required)
+            modmenu(optional)

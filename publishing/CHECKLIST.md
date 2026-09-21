@@ -69,3 +69,21 @@ Once CI is set up (`.github/workflows/build.yml`), releasing is tag-driven:
 > (sections 2–3 above), then put its ID into `modrinth-id` in the workflow and
 > add the `MODRINTH_TOKEN` secret (Modrinth → Settings → Authorization token,
 > "Create versions" scope).
+
+### While a project is still waiting on Modrinth review
+
+Modrinth reviews a project's **first version** by hand. During that window the project
+can't be resolved through the public API, and the upload endpoint rejects an unresolvable
+slug with a 400 `invalid character '-' in base62 encoding` — so `build.yml` deliberately
+*suspends* its Modrinth publish instead of failing the release:
+
+- The GitHub release is always created; a deferred Modrinth publish logs a warning
+- `.github/workflows/modrinth-watch.yml` runs every 30 minutes, and when it sees that
+  the newest tag has no Modrinth version yet (and the project now resolves), it publishes
+  it — reusing the jar from the GitHub release, no rebuild
+- Once every tag is published the watcher is a no-op: two API calls and it exits
+
+So a release during review needs **nothing** from you — approval alone is enough for the
+version to appear. To watch it happen, open the repo's **Actions** tab and look at
+"Modrinth publish watcher" (you can also run it by hand from there with *Run workflow*).
+Delete that file if you ever prefer publishing by hand.

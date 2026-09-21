@@ -84,26 +84,38 @@ jobs:
           generate_release_notes: true
           overwrite_files: true
 
-      - name: Check Modrinth project id
+      # A brand-new Modrinth project sits in a manual review queue, and until it clears
+      # the public API can't resolve the slug — the upload endpoint then rejects it with a
+      # confusing 400 "invalid character in base62 encoding". Rather than fail the whole
+      # release over that, detect it here and skip cleanly; the scheduled
+      # "Modrinth publish watcher" workflow retries and publishes once it's approved.
+      - name: Is the Modrinth project resolvable yet?
+        id: modrinth
         if: env.MODRINTH_TOKEN != ''
-        run: |
-          if [ "${MODRINTH_ID}" = "YOUR_MODRINTH_PROJECT_ID" ]; then
-            echo "::error::MODRINTH_TOKEN is set, but modrinth-id is still the placeholder. Create the project on Modrinth, then put its ID or slug into .github/workflows/build.yml (publish job) and commit."
-            exit 1
-          fi
         env:
           MODRINTH_ID: fps-ping-monitor
+        run: |
+          if [ -z "${MODRINTH_ID}" ] || [ "${MODRINTH_ID}" = "YOUR_MODRINTH_PROJECT_ID" ]; then
+            echo "::error::modrinth-id is still the placeholder — put the real project ID or slug into .github/workflows/build.yml and commit."
+            exit 1
+          fi
+          if curl -sf --max-time 20 "https://api.modrinth.com/v2/project/${MODRINTH_ID}" > /dev/null; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Modrinth project '${MODRINTH_ID}' is not publicly resolvable yet (awaiting review). Skipping the Modrinth publish — the watcher workflow publishes version ${VERSION} automatically once it is approved."
+          fi
 
       # Send only the newest changelog section to Modrinth, not the whole file.
       - name: Extract changelog for this version
-        if: env.MODRINTH_TOKEN != ''
+        if: env.MODRINTH_TOKEN != '' && steps.modrinth.outputs.ready == 'true'
         run: |
           awk '/^## /{if (found) exit; found=1} found' publishing/CHANGELOG.md > release-changelog.md
           if [ ! -s release-changelog.md ]; then echo "No changelog section found for this release — using full changelog."; cp publishing/CHANGELOG.md release-changelog.md; fi
           head -c 32000 release-changelog.md > release-changelog.tmp && mv release-changelog.tmp release-changelog.md
 
       - name: Publish to Modrinth
-        if: env.MODRINTH_TOKEN != ''
+        if: env.MODRINTH_TOKEN != '' && steps.modrinth.outputs.ready == 'true'
         uses: Kir-Antipov/mc-publish@v3.3.1
         with:
           modrinth-id: fps-ping-monitor
@@ -124,3 +136,7 @@ jobs:
       - name: Modrinth publishing skipped
         if: env.MODRINTH_TOKEN == ''
         run: echo "::warning::MODRINTH_TOKEN secret is not set — skipped publishing to Modrinth. The GitHub release was still created."
+
+      - name: Modrinth publishing deferred
+        if: env.MODRINTH_TOKEN != '' && steps.modrinth.outputs.ready != 'true'
+        run: echo "::warning::Modrinth project still awaiting review — version ${VERSION} will be published by the \"Modrinth publish watcher\" workflow as soon as it is approved. Nothing to do on your side."
