@@ -60,6 +60,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+        with:
+          # Full history so the release notes can name the previous tag for the
+          # "Full Changelog" compare link.
+          fetch-depth: 0
 
       - name: Download built jars
         uses: actions/download-artifact@v8.0.1
@@ -77,11 +81,47 @@ jobs:
             exit 1
           fi
 
+      # Release notes are the changelog, so a release reads like real release notes
+      # instead of a bare "Full Changelog" compare link. Sections are expected to be
+      # ordered newest-first, like the file already is.
+      - name: Extract this version's changelog
+        run: |
+          awk '/^## /{if (found) exit; found=1} found' publishing/CHANGELOG.md | tail -n +2 | awk 'NF{body=1} body' > changelog-section.md
+          if [ ! -s changelog-section.md ]; then
+            echo "::warning::publishing/CHANGELOG.md has no '## ' section — using the whole file for the release notes."
+            cp publishing/CHANGELOG.md changelog-section.md
+          fi
+          FIRST_HEADING="$(awk '/^## /{print; exit}' publishing/CHANGELOG.md)"
+          echo "Newest changelog section: ${FIRST_HEADING:-<none>}"
+          case "${FIRST_HEADING}" in
+            *"${VERSION}"*) ;;
+            *) echo "::warning::Newest changelog section is '${FIRST_HEADING}' but this release is ${VERSION}; publishing/CHANGELOG.md is expected to be newest-first." ;;
+          esac
+
+      - name: Compose release notes
+        run: |
+          PREVIOUS="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+          {
+            echo "## FPS & Ping Monitor ${VERSION}"
+            echo
+            cat changelog-section.md
+            echo
+            echo "---"
+            echo
+            if [ -n "${PREVIOUS}" ]; then
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${PREVIOUS}...${GITHUB_REF_NAME}"
+            else
+              echo "**Full changelog**: https://github.com/${GITHUB_REPOSITORY}/blob/HEAD/publishing/CHANGELOG.md"
+            fi
+          } > release-notes.md
+          echo "----- release notes -----"
+          cat release-notes.md
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3.0.3
         with:
           files: build/libs/*.jar
-          generate_release_notes: true
+          body_path: release-notes.md
           overwrite_files: true
 
       # A brand-new Modrinth project sits in a manual review queue, and until it clears
@@ -107,12 +147,11 @@ jobs:
           fi
 
       # Send only the newest changelog section to Modrinth, not the whole file.
-      - name: Extract changelog for this version
+      - name: Prepare changelog for Modrinth
         if: env.MODRINTH_TOKEN != '' && steps.modrinth.outputs.ready == 'true'
         run: |
-          awk '/^## /{if (found) exit; found=1} found' publishing/CHANGELOG.md > release-changelog.md
-          if [ ! -s release-changelog.md ]; then echo "No changelog section found for this release — using full changelog."; cp publishing/CHANGELOG.md release-changelog.md; fi
-          head -c 32000 release-changelog.md > release-changelog.tmp && mv release-changelog.tmp release-changelog.md
+          if [ ! -s changelog-section.md ]; then echo "No changelog section found for this release — using full changelog."; cp publishing/CHANGELOG.md changelog-section.md; fi
+          head -c 32000 changelog-section.md > release-changelog.md
 
       - name: Publish to Modrinth
         if: env.MODRINTH_TOKEN != '' && steps.modrinth.outputs.ready == 'true'

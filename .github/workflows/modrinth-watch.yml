@@ -102,6 +102,12 @@ jobs:
         run: |
           awk '/^## /{if (found) exit; found=1} found' publishing/CHANGELOG.md > release-changelog.md
           if [ ! -s release-changelog.md ]; then echo "No changelog section found — using full changelog."; cp publishing/CHANGELOG.md release-changelog.md; fi
+          FIRST_HEADING="$(awk '/^## /{print; exit}' publishing/CHANGELOG.md)"
+          echo "Newest changelog section: ${FIRST_HEADING:-<none>}"
+          case "${FIRST_HEADING}" in
+            *"${{ steps.version.outputs.version }}"*) ;;
+            *) echo "::warning::Newest changelog section is '${FIRST_HEADING}' but this release is ${{ steps.version.outputs.version }}; publishing/CHANGELOG.md is expected to be newest-first." ;;
+          esac
           head -c 32000 release-changelog.md > release-changelog.tmp && mv release-changelog.tmp release-changelog.md
 
       - name: Publish to Modrinth
